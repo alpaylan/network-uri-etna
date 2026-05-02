@@ -9,3 +9,12 @@ dist/*
 dist-newstyle/*
 .vscode
 workspace.code-workspace
+
+# etna-ify additions
+/etna.log
+/progress.jsonl
+/.hegel/
+/.marauders/
+/dist-newstyle/
+/etna/dist-newstyle/
+cabal.project.local

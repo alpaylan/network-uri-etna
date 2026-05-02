@@ -1,0 +1,77 @@
+name = "network-uri"
+description = "URI manipulation library (haskell/network-uri). Bug fixes mined from upstream history; modern HEAD is the base, each patch reverse-applies a fix to install the original bug."
+language = "haskell"
+strategies = ["quickcheck", "hedgehog", "falsify", "smallcheck"]
+crate = "network-uri"
+base_commit = "7d6e77ed5fa26dab054fedc0b1e1948847a054e1"
+
+# ---------------------------------------------------------------------------
+# Variant: segments_drop_trailing_8dcbd7fe_1
+# ---------------------------------------------------------------------------
+[[tasks]]
+mutations = ["segments_drop_trailing_8dcbd7fe_1"]
+
+[tasks.source]
+repo = "https://github.com/haskell/network-uri"
+commits = ["8dcbd7fec508887c79b07c19bd7b70c7a6876e47"]
+commit_subjects = ["make segments not start with /"]
+origin = "internal"
+summary = "Early buggy state of `segments`: the final case `(_, _) -> Nothing` silently dropped the trailing path segment whenever the input did not end in '/'. So pathSegments of \"http://x/foo/bar/baz\" returned [\"foo\", \"bar\"] instead of [\"foo\", \"bar\", \"baz\"]. The fix introduces an explicit `Just (seg, \"\")` case for the trailing segment plus a `dropLeadingEmpty` post-pass for absolute paths."
+
+[tasks.injection]
+kind = "patch"
+files = ["Network/URI.hs"]
+locations = [{ file = "Network/URI.hs", line = 1212, symbol = "segments" }]
+patch = "patches/segments_drop_trailing_8dcbd7fe_1.patch"
+
+[tasks.bug]
+short_name = "path_segments_drops_trailing"
+invariant = "For an absolute URI path of the form \"/<seg1>/<seg2>/.../<segN>\" with N >= 1 and every <segi> non-empty, pathSegments returns [<seg1>, <seg2>, ..., <segN>] — every segment present, in order."
+how_triggered = "Reverse-applying the patch restores the early `segments = unfoldr nextSegmentMaybe` definition where the unfold loop terminates with `Nothing` on the trailing segment (no `/` suffix), silently dropping it. pathSegments of \"http://x/foo/bar/baz\" then returns [\"foo\", \"bar\"]; pathSegments of \"http://x/a\" returns []."
+
+[[tasks.tasks]]
+property = "PathSegmentsRoundTrip"
+witnesses = [
+  { test_fn = "witness_path_segments_round_trip_case_three",  note = "pathSegments \"http://example.com/foo/bar/baz\" must equal [\"foo\", \"bar\", \"baz\"]" },
+  { test_fn = "witness_path_segments_round_trip_case_single", note = "pathSegments \"http://example.com/a\" must equal [\"a\"]" },
+  { test_fn = "witness_path_segments_round_trip_case_two",    note = "pathSegments \"http://example.com/x/y\" must equal [\"x\", \"y\"]" },
+]
+
+# ---------------------------------------------------------------------------
+# Dropped candidates
+# ---------------------------------------------------------------------------
+
+[[dropped]]
+commit = "8c014525f95074a654009802b49fbad63d010402"
+subject = "Fix ipv4address parser to not depend on broken behaviour of notFollowedBy"
+reason = "The original bug is in Parsec's pre-2015 `notFollowedBy`: it failed on parsers that succeed with empty consumption (regName matches 0..255 chars). Modern parsec (3.1.x) handles this correctly, so reverse-applying the historical patch restores the workaround but the underlying bug no longer exists — isIPv4address \"127.0.0.1\" still returns True on the buggy state. Variant is terminally inexpressible against the modern dependency surface."
+
+[[dropped]]
+commit = "5f16d95a59d7607c0b2d5fc64a3c2c2b24272018"
+subject = "deal with empty segments correctly"
+reason = "Subsumed by `segments_drop_trailing_8dcbd7fe_1`. This commit is one step further in the segments-fix chain (8dcbd7fe → 5f16d95 → b6f7062 → 0e1abff2). Reverting only this commit's diff produces a state that still drops trailing segments, just by a different mechanism (`snd $ break (/='/')` over-strips leading slashes). The PathSegmentsRoundTrip property already discriminates this state from HEAD via the same witness inputs."
+
+[[dropped]]
+commit = "b6f7062ce3883ffac53183437de72123ae85bcdf"
+subject = "Allow empty segments"
+reason = "Observationally equivalent to modern HEAD on every input we can express through `pathSegments` (parseURI normalizes the path before segments sees it). The follow-up commit 0e1abff2 was a pure refactor (`dropLeadingEmpty` extracted) with no behavioral delta."
+
+[[dropped]]
+commit = "0e1abff2b6b50b12a3054d00ebd8a22c3a11af71"
+subject = "Create tests for pathSegments. Update (simplify?) the implementation a little."
+reason = "Pure simplification of `segments` on top of b6f7062 — equivalent observable behavior. Commit message itself flags it as a simplification, and the diff only renames helper bindings."
+
+[[dropped]]
+commit = "acaad2a568f342e0d9633eed2923125f8e15a24f"
+subject = "Improve subDelims parser."
+reason = "Refactor: replaces `oneOf \"!$&'()*+,;=\"` with `satisfy isSubDelims` against the same character set. No observable behavior change."
+
+[[dropped]]
+commit = "03b739138390282b85af665adfa56a2b4c3bc588"
+subject = "Network.URI: improve efficiency of segment parser."
+reason = "Performance-only refactor: replaces per-character `pchar` with chunked `pchars` (parses runs of non-escape chars, then concats). Same parse output for every input."
+
+[[dropped]]
+commit = "21b874a810f234c84f20cdc069517dc22ea69864"
+subject = "Optimise isReserved"
+reason = "Performance-only refactor: replaces `c \\`elem\\` \"...\"` with explicit `case` over the same character set. No observable behavior change."
