@@ -1,26 +1,26 @@
-diff --git b/Network/URI.hs a/Network/URI.hs
-index 1dc6ff9..b344ec7 100644
---- b/Network/URI.hs
-+++ a/Network/URI.hs
-@@ -1210,14 +1210,15 @@ nextSegment ps =
+diff --git a/Network/URI.hs b/Network/URI.hs
+index b344ec7..1dc6ff9 100644
+--- a/Network/URI.hs
++++ b/Network/URI.hs
+@@ -1210,15 +1210,14 @@ nextSegment ps =
  
  -- | The segments of the path component of a URI. E.g.,
  segments :: String -> [String]
--segments = unfoldr nextSegmentMaybe
-+segments str = dropLeadingEmpty $ unfoldr nextSegmentMaybe str
+-segments str = dropLeadingEmpty $ unfoldr nextSegmentMaybe str
++segments = unfoldr nextSegmentMaybe
      where
--        nextSegmentMaybe ('/':ps) = next ps
--        nextSegmentMaybe ps = next ps
--        next ps =
-+        nextSegmentMaybe "" = Nothing
-+        nextSegmentMaybe ps =
+-        nextSegmentMaybe "" = Nothing
+-        nextSegmentMaybe ps =
++        nextSegmentMaybe ('/':ps) = next ps
++        nextSegmentMaybe ps = next ps
++        next ps =
              case break (=='/') ps of
--                (r,'/':ps1) -> Just (r,ps1)
--                (_,_)       -> Nothing
-+                (seg, '/':ps1) -> Just (seg, ps1)
-+                (seg, _)       -> Just (seg, "")
-+        dropLeadingEmpty ("":xs) = xs
-+        dropLeadingEmpty xs      = xs
+-                (seg, '/':ps1) -> Just (seg, ps1)
+-                (seg, _)       -> Just (seg, "")
+-        dropLeadingEmpty ("":xs) = xs
+-        dropLeadingEmpty xs      = xs
++                (r,'/':ps1) -> Just (r,ps1)
++                (_,_)       -> Nothing
  
  -- | Returns the segments of the path component. E.g.,
  --    pathSegments <$> parseURI "http://example.org/foo/bar/baz"
